@@ -9,8 +9,6 @@ import json
 
 PATH = "C:/Program Files (x86)/chromedriver.exe"
 driver = webdriver.Chrome(PATH)
-#driver.get("https://www.bestbuy.com/site/sony-interactive-entertainment-playstation-4-pro-1tb-limited-edition-the-last-of-us-part-ll-console-bundle-black/6414958.p?skuId=6414958")
-driver.get("https://www.bestbuy.com/site/the-last-of-us-part-ii-standard-edition-playstation-4/6255399.p?skuId=6255399")
 
 #load up buyer info from json file
 f = open('./data/info.json',) 
@@ -31,6 +29,7 @@ def goToCheckout(driver):
             EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Yes')]"))
         )
         ageButton.click()
+        
     except NoSuchElementException:
         pass
     finally:
@@ -76,14 +75,14 @@ def paymentInfo(driver):
     card_num = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "optimized-cc-card-number")))
     card_num.send_keys(buyer["payment"]["card_number"])
     #THEN SELECT ALL TAGS TO FILL
-    exp_month = Select(driver.find_element_by_name("expiration-month"))
+    exp_month =  Select(WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "expiration-month"))))
     exp_year = Select(driver.find_element_by_name("expiration-year"))
     cvv = driver.find_element_by_id("credit-card-cvv")
     
     firstname = driver.find_element_by_id("payment.billingAddress.firstName")
     lastname = driver.find_element_by_id("payment.billingAddress.lastName")
     address  = driver.find_element_by_id("payment.billingAddress.street")
-        
+            
     city = driver.find_element_by_id("payment.billingAddress.city")
     state = Select(driver.find_element_by_id("payment.billingAddress.state"))
     zip = driver.find_element_by_id("payment.billingAddress.zipcode")
@@ -91,37 +90,53 @@ def paymentInfo(driver):
     exp_month.select_by_value(buyer["payment"]["expiration_date"]["month"])
     exp_year.select_by_value(buyer["payment"]["expiration_date"]["year"])
     cvv.send_keys(buyer["payment"]["cvv"])
-
-
-    firstname.send_keys(buyer["billing_address"]["firstname"])
-    lastname.send_keys(buyer["billing_address"]["lastname"])
-    address.send_keys(buyer["billing_address"]["address"])
-    if buyer["billing_address"]["apt"] != "":
-        driver.find_element_by_class_name("address-form__showAddress2Link").click()
-        apt = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "payment.billingAddress.street2")))
-        apt.send_keys(buyer["billing_address"]["apt"])
-    city.send_keys(buyer["billing_address"]["city"])
-    state.select_by_value(buyer["billing_address"]["state"])
-    zip.send_keys(buyer["billing_address"]["zip"])
-
-    ##driver.find_element_by_class_name("create-account__button")
-
+    
+    if firstname.get_attribute("value") == "":
+        if buyer["billing_address"]["apt"] != "":
+            driver.find_element_by_class_name("address-form__showAddress2Link").click()
+            apt = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "payment.billingAddress.street2")))
+    
+        firstname.send_keys(buyer["billing_address"]["firstname"])
+        lastname.send_keys(buyer["billing_address"]["lastname"])
+        address.send_keys(buyer["billing_address"]["address"])
+        if buyer["billing_address"]["apt"] != "":
+            apt.send_keys(buyer["billing_address"]["apt"]) 
+        city.send_keys(buyer["billing_address"]["city"])
+        state.select_by_value(buyer["billing_address"]["state"])
+        zip.send_keys(buyer["billing_address"]["zip"])
+    
+    try:
+        password = driver.find_element_by_name("password")
+        password.send_keys(buyer["contact"]["password"])
+        create_account_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CLASS_NAME,"create-account__button"))
+            )
+        create_account_button.click()
+    except NoSuchElementException:
+        pass
+    finally:
+        orderButton = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, ".btn-lg.btn-primary"))
+            )
+        orderButton.click()
+#driver.get("https://www.bestbuy.com/site/cyberpunk-2077-standard-edition-playstation-4/6255151.p?skuId=6255151")
 
 while not snagged:
-    try:        
+    driver.get("https://www.bestbuy.com/site/sony-interactive-entertainment-playstation-4-pro-1tb-limited-edition-the-last-of-us-part-ll-console-bundle-black/6414958.p?skuId=6414958")
+    try:      
         atc_button = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, ".btn-lg.add-to-cart-button"))
         )
                 
         if (atc_button.is_enabled()):
             atc_button.click()
-            snagged=True
             sleep(1)
+            goToCheckout(driver)
+            snagged=True
+
         else:
             print ("retry")
-            driver.refresh()
     except:
-        driver.refresh()
-goToCheckout(driver)
+        pass
 contactInfo(driver)
 paymentInfo(driver)
